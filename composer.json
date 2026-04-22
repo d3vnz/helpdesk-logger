@@ -1,0 +1,50 @@
+{
+    "name": "d3vnz/helpdesk-logger",
+    "description": "Laravel package that reports application exceptions to a TicketMate helpdesk — fingerprinted, rate-limited, context-rich. Replaces Sentry for apps that already have TicketMate.",
+    "keywords": ["laravel", "error-reporting", "ticketmate", "exception-handler", "helpdesk", "d3vnz"],
+    "license": "MIT",
+    "type": "library",
+    "authors": [
+        {
+            "name": "Joel Ireland",
+            "email": "joel@d3v.nz",
+            "homepage": "https://d3v.nz"
+        }
+    ],
+    "require": {
+        "php": "^8.2",
+        "illuminate/contracts": "^10.0 || ^11.0 || ^12.0 || ^13.0",
+        "illuminate/http": "^10.0 || ^11.0 || ^12.0 || ^13.0",
+        "illuminate/queue": "^10.0 || ^11.0 || ^12.0 || ^13.0",
+        "illuminate/support": "^10.0 || ^11.0 || ^12.0 || ^13.0"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^8.0 || ^9.0 || ^10.0",
+        "phpunit/phpunit": "^10.0 || ^11.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "D3vnz\\HelpdeskLogger\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "D3vnz\\HelpdeskLogger\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "D3vnz\\HelpdeskLogger\\HelpdeskLoggerServiceProvider"
+            ],
+            "aliases": {
+                "Helpdesk": "D3vnz\\HelpdeskLogger\\Facades\\Helpdesk"
+            }
+        }
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
