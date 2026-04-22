@@ -2,6 +2,7 @@
 
 namespace D3vnz\HelpdeskLogger;
 
+use D3vnz\HelpdeskLogger\Console\HelpdeskTestCommand;
 use Illuminate\Contracts\Auth\Factory as AuthFactory;
 use Illuminate\Contracts\Cache\Factory as CacheFactory;
 use Illuminate\Http\Client\Factory as HttpFactory;
@@ -39,15 +40,22 @@ class HelpdeskLoggerServiceProvider extends ServiceProvider
             /** @var CacheFactory $cacheFactory */
             $cacheFactory = $app->make(CacheFactory::class);
             return new SpikeGate(
-                cache: $cacheFactory->store(),
+                cache: $this->resolveCacheStore($cacheFactory),
                 windowSeconds: (int) config('helpdesk-logger.burst_window_seconds', 60),
             );
         });
 
         $this->app->singleton(Reporter::class, function ($app) {
+            /** @var CacheFactory $cacheFactory */
+            $cacheFactory = $app->make(CacheFactory::class);
             return new Reporter(
                 http: $app->make(HttpFactory::class),
                 config: (array) config('helpdesk-logger'),
+                // Dedicated store so a cache:clear on the app side
+                // doesn't wipe circuit state we need to track outages.
+                // Falls back to the default store when the configured
+                // store isn't defined.
+                cache: $this->resolveCacheStore($cacheFactory),
             );
         });
 
@@ -66,6 +74,28 @@ class HelpdeskLoggerServiceProvider extends ServiceProvider
             $this->publishes([
                 __DIR__ . '/../config/helpdesk-logger.php' => config_path('helpdesk-logger.php'),
             ], 'helpdesk-logger-config');
+
+            $this->commands([
+                HelpdeskTestCommand::class,
+            ]);
+        }
+    }
+
+    /**
+     * Resolve the cache store for the SpikeGate + circuit breaker.
+     * Honours config('helpdesk-logger.cache_store') when set; otherwise
+     * uses Laravel's default store. Falls back to default if the
+     * configured store isn't registered.
+     */
+    protected function resolveCacheStore(CacheFactory $cacheFactory)
+    {
+        $name = config('helpdesk-logger.cache_store');
+        if (! $name) return $cacheFactory->store();
+
+        try {
+            return $cacheFactory->store($name);
+        } catch (\Throwable) {
+            return $cacheFactory->store();
         }
     }
 

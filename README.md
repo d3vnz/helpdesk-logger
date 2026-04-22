@@ -92,6 +92,44 @@ Key knobs (see `config/helpdesk-logger.php` for the full list):
 | `stack.max_frames` | `40` | Ship the top N frames. |
 | `max_context_bytes` | `65536` | Hard cap on context JSON size. |
 
+## Testing the install
+
+A one-shot artisan command fires a fake exception through the full pipeline so you can verify the round-trip without waiting for a real bug:
+
+```bash
+php artisan helpdesk:test
+```
+
+Output includes the endpoint, fingerprint, circuit-breaker state, and the TicketMate response with a direct link to the created ticket.
+
+Useful flags:
+- `--dry-run` — print the payload that would be sent, don't actually POST.
+- `--message="Custom text"` — override the generated test message.
+- `--fingerprint=abc123` — force a specific fingerprint (test dedup/reopen against an existing ticket).
+
+The command bypasses the queue, the SpikeGate, and any open circuit so the test always reflects the current TM reachability.
+
+## Circuit breaker — what happens when TicketMate is down
+
+If the endpoint becomes unreachable, we don't want every failing exception in your app to time out the queue worker and spam the log. After 3 failures in 60 seconds the circuit **opens for 5 minutes** — every `send()` during that window returns immediately without touching the network. The first attempt after the window acts as a canary: success closes the circuit, failure reopens it.
+
+Defaults are conservative; tune via env:
+
+```env
+HELPDESK_LOGGER_CIRCUIT_THRESHOLD=3    # failures required to open
+HELPDESK_LOGGER_CIRCUIT_WINDOW=60      # rolling failure window (sec)
+HELPDESK_LOGGER_CIRCUIT_OPEN_FOR=300   # how long the circuit stays open (sec)
+```
+
+Combined with the existing layers — queued dispatch (no blocking the user request), `tries=1` on the job (no retry storms), try/catch around everything (never re-throws into Laravel), and the SpikeGate's fingerprint coalescing — this means a dead helpdesk never double-errors your app. It quietly does nothing.
+
+Inspect from code:
+
+```php
+$status = app(\D3vnz\HelpdeskLogger\Reporter::class)->circuitStatus();
+// ['open' => bool, 'open_until' => ISO8601|null, 'failures' => int]
+```
+
 ## Spike protection, in detail
 
 - **Per-fingerprint burst window**: first event fires immediately; subsequent events in the same 60s window silently bump a counter. When the window expires, the next event fires with `burst_count = <silent events + 1>`.

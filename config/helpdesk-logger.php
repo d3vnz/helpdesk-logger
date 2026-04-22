@@ -50,6 +50,40 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Circuit breaker (failover when TicketMate is down)
+    |--------------------------------------------------------------------------
+    | If the TicketMate endpoint becomes unreachable — network partition,
+    | TM deploy, DB crash — we SILENTLY STOP sending after a handful of
+    | failures. This prevents each failing exception from timing out the
+    | queue worker and spamming the app log. A canary send on recovery
+    | reopens the circuit.
+    |
+    |   failure_window_seconds  Rolling window in which `failures_to_open`
+    |                           fails must accrue before opening.
+    |   failures_to_open        Consecutive (within-window) failures that
+    |                           trip the breaker.
+    |   open_duration_seconds   How long the circuit stays open before the
+    |                           next send() attempts a canary call.
+    */
+    'circuit_breaker' => [
+        'failure_window_seconds' => (int) env('HELPDESK_LOGGER_CIRCUIT_WINDOW', 60),
+        'failures_to_open' => (int) env('HELPDESK_LOGGER_CIRCUIT_THRESHOLD', 3),
+        'open_duration_seconds' => (int) env('HELPDESK_LOGGER_CIRCUIT_OPEN_FOR', 300),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Cache store
+    |--------------------------------------------------------------------------
+    | The store used by the SpikeGate + circuit breaker. Null = Laravel's
+    | default (usually Redis on prod, file/database in dev). Override when
+    | the default store is volatile/ephemeral and you want circuit state
+    | to survive, e.g. CACHE_STORE=array with HELPDESK_LOGGER_CACHE_STORE=redis.
+    */
+    'cache_store' => env('HELPDESK_LOGGER_CACHE_STORE'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Spike protection
     |--------------------------------------------------------------------------
     | Primary dedup happens server-side in TicketMate by fingerprint. This
