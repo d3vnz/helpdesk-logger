@@ -33,8 +33,19 @@ Add the endpoint + token to `.env`:
 HELPDESK_LOGGER_ENDPOINT=https://helpdesk.d3v.nz
 HELPDESK_LOGGER_TOKEN=<the Repository api_token from TicketMate admin>
 HELPDESK_LOGGER_ENVIRONMENT="${APP_ENV}"
-HELPDESK_LOGGER_RELEASE=  # optional — populate with git SHA on deploy
+# HELPDESK_LOGGER_RELEASE is auto-detected from .git/HEAD and platform
+# env vars (Heroku, Vercel, Railway, Render, GitHub, …). Only set this
+# if you're deploying from an artifact where .git is stripped.
 ```
+
+### Release / commit SHA — auto-detected
+
+The SHA stamped on every event is discovered automatically, in order:
+
+1. `HELPDESK_LOGGER_RELEASE` env var — manual override wins
+2. Platform env vars — `SOURCE_VERSION`, `VERCEL_GIT_COMMIT_SHA`, `RAILWAY_GIT_COMMIT_SHA`, `RENDER_GIT_COMMIT`, `GITHUB_SHA`, `CI_COMMIT_SHA`, `BITBUCKET_COMMIT`, `COMMIT_SHA`, `GIT_COMMIT`
+3. `.git/HEAD` file — covers Laravel Forge and any git-based deploy (no `exec()`, no shell)
+4. Empty if none of the above apply
 
 The same token the `d3vnz/issuetracker` package uses — one token, two uses.
 

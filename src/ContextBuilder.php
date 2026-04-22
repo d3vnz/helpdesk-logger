@@ -38,7 +38,10 @@ class ContextBuilder
             'occurred_at' => now()->toIso8601String(),
 
             'environment' => (string) ($this->config['environment'] ?? 'production'),
-            'release_sha' => $this->config['release'] ?? null,
+            // Auto-detects from .git/HEAD + common platform env vars so
+            // Forge deploys don't need to plumb a SHA through env. Manual
+            // `HELPDESK_LOGGER_RELEASE` env var always wins.
+            'release_sha' => $this->config['release'] ?: ReleaseDetector::detect(),
             'php_version' => PHP_VERSION,
             'framework' => $this->detectFramework(),
             'server_name' => $this->config['server_name'] ?? (gethostname() ?: null),

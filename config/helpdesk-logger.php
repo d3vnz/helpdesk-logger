@@ -55,7 +55,16 @@ return [
     | started after a specific deploy / upgrade.
     */
     'environment' => env('HELPDESK_LOGGER_ENVIRONMENT', env('APP_ENV', 'production')),
-    'release' => env('HELPDESK_LOGGER_RELEASE'), // e.g. git SHA, set on deploy
+
+    // Git SHA stamped on every event — lets you spot "this error started
+    // appearing after deploy X". Auto-detected when unset, via:
+    //   1. Platform env vars (SOURCE_VERSION, VERCEL_GIT_COMMIT_SHA,
+    //      RAILWAY_GIT_COMMIT_SHA, RENDER_GIT_COMMIT, GITHUB_SHA, …)
+    //   2. Direct read of `.git/HEAD` (Laravel Forge / any git-based
+    //      deploy — no shell, no exec())
+    // Set HELPDESK_LOGGER_RELEASE=xyz to override.
+    'release' => env('HELPDESK_LOGGER_RELEASE'),
+
     'app_version' => env('HELPDESK_LOGGER_APP_VERSION'),
     'server_name' => env('HELPDESK_LOGGER_SERVER_NAME', gethostname() ?: null),
 

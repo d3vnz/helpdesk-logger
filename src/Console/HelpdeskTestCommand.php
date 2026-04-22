@@ -3,6 +3,7 @@
 namespace D3vnz\HelpdeskLogger\Console;
 
 use D3vnz\HelpdeskLogger\ContextBuilder;
+use D3vnz\HelpdeskLogger\ReleaseDetector;
 use D3vnz\HelpdeskLogger\Reporter;
 use Illuminate\Console\Command;
 use RuntimeException;
@@ -80,7 +81,8 @@ class HelpdeskTestCommand extends Command
         $this->line('  exception    = '.$payload['exception_class'].': '.$payload['exception_message']);
         $this->line('  frames       = '.count($payload['stack_trace'] ?? []).' captured');
         $this->line('  user         = '.($payload['user_email'] ?? '(not authenticated)'));
-        $this->line('  release      = '.($payload['release_sha'] ?? '(not set)'));
+        $this->line('  release      = '.($payload['release_sha'] ?? '(not detected)')
+            .(($payload['release_sha'] ?? null) ? '  [source: '.(ReleaseDetector::source() ?? 'config').']' : ''));
 
         $circuit = $reporter->circuitStatus();
         $this->line('  circuit      = '.($circuit['open'] ? 'OPEN until '.$circuit['open_until'] : 'closed').' (failures='.$circuit['failures'].')');
