@@ -81,17 +81,41 @@ class HelpdeskLogger
     }
 
     /**
-     * Convenience wiring for Laravel 11's bootstrap/app.php style:
+     * Convenience wiring for Laravel 11+ bootstrap/app.php style:
      *   ->withExceptions(function (Exceptions $exceptions) {
      *       \Helpdesk::captureExceptions($exceptions);
      *   })
+     *
+     * Called during HandleExceptions bootstrap, which runs BEFORE
+     * RegisterProviders. We therefore cannot touch `$this` state
+     * here (the service provider hasn't registered yet, and the
+     * facade's `static` resolution will fail when it recurses back
+     * into the container with no bindings). Instead we register a
+     * late-bound closure — the closure fires at exception-time,
+     * which is always after bootstrap — and resolves the logger
+     * from the container then.
      */
     public function captureExceptions(object $exceptions): void
     {
+        self::register($exceptions);
+    }
+
+    public static function register(object $exceptions): void
+    {
         if (! method_exists($exceptions, 'report')) return;
 
-        $exceptions->report(function (Throwable $e) {
-            $this->report($e);
+        $exceptions->report(function (Throwable $e): void {
+            // Resolve lazily — providers have registered by the time
+            // an exception is actually thrown through the handler.
+            try {
+                $logger = app(self::class);
+                $logger->report($e);
+            } catch (Throwable $inner) {
+                Log::warning('helpdesk-logger: failed to resolve logger during report', [
+                    'original' => $e->getMessage(),
+                    'resolve_error' => $inner->getMessage(),
+                ]);
+            }
         });
     }
 
