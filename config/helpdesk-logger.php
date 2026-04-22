@@ -6,10 +6,34 @@ return [
     |--------------------------------------------------------------------------
     | Enabled
     |--------------------------------------------------------------------------
-    | Master switch. Set false to disable ALL error reporting without removing
-    | the package. Kills the bootstrap::captureExceptions() wiring in a panic.
+    | Explicit on/off override. When unset (null), we fall back to the
+    | `environments` allowlist below so local dev doesn't spam the
+    | helpdesk with every `dd()` crash.
+    |
+    |   HELPDESK_LOGGER_ENABLED=true   → always on, regardless of APP_ENV
+    |   HELPDESK_LOGGER_ENABLED=false  → always off, regardless of APP_ENV
+    |   (unset)                        → on only when APP_ENV matches the
+    |                                    `environments` list below
     */
-    'enabled' => (bool) env('HELPDESK_LOGGER_ENABLED', true),
+    'enabled' => env('HELPDESK_LOGGER_ENABLED'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Environments allowlist
+    |--------------------------------------------------------------------------
+    | Which APP_ENV values report by default. Only consulted when
+    | HELPDESK_LOGGER_ENABLED is UNSET (the env var always wins when set).
+    |
+    | Default: production + staging. Local/testing are silent by default —
+    | devs see the error page in their browser, they don't need a ticket.
+    |
+    | Override in .env as a comma-sep list:
+    |   HELPDESK_LOGGER_ENVIRONMENTS="production,staging,preview"
+    */
+    'environments' => array_values(array_filter(array_map(
+        'trim',
+        explode(',', (string) env('HELPDESK_LOGGER_ENVIRONMENTS', 'production,staging'))
+    ))),
 
     /*
     |--------------------------------------------------------------------------

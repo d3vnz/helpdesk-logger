@@ -32,11 +32,6 @@ class HelpdeskTestCommand extends Command
 
     public function handle(ContextBuilder $builder, Reporter $reporter): int
     {
-        if (! config('helpdesk-logger.enabled', true)) {
-            $this->error('HELPDESK_LOGGER_ENABLED is false — flip it on before testing.');
-            return self::FAILURE;
-        }
-
         $endpoint = (string) config('helpdesk-logger.endpoint');
         $token = (string) config('helpdesk-logger.token');
         if ($endpoint === '' || $token === '') {
@@ -44,6 +39,21 @@ class HelpdeskTestCommand extends Command
             $this->line('  endpoint = '.($endpoint ?: '(empty)'));
             $this->line('  token    = '.($token ? '(set, '.strlen($token).' chars)' : '(empty)'));
             return self::FAILURE;
+        }
+
+        // The whole point of this command is to probe reachability
+        // ON DEMAND — so we don't gate it on isEnabled(). If reporting
+        // is currently off for this APP_ENV (e.g. local dev), we WARN
+        // so the operator knows real exceptions are silent, but the
+        // test still fires.
+        $logger = app(\D3vnz\HelpdeskLogger\HelpdeskLogger::class);
+        if (! $logger->isEnabled()) {
+            $this->warn('⚠ Reporting is DISABLED for APP_ENV=' . config('app.env') . '.');
+            $this->warn('  This test will send anyway to verify the pipeline,');
+            $this->warn('  but real exceptions in this environment are silent.');
+            $this->warn('  Override with HELPDESK_LOGGER_ENABLED=true or add');
+            $this->warn('  "'.config('app.env').'" to HELPDESK_LOGGER_ENVIRONMENTS.');
+            $this->newLine();
         }
 
         // Throw + catch so PHP populates a real stack trace — using

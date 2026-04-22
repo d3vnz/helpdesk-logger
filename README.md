@@ -38,6 +38,14 @@ HELPDESK_LOGGER_RELEASE=  # optional — populate with git SHA on deploy
 
 The same token the `d3vnz/issuetracker` package uses — one token, two uses.
 
+**Local dev reports nothing by default.** The package only fires on `APP_ENV` matching `production` or `staging`. Override with:
+
+```env
+HELPDESK_LOGGER_ENABLED=true        # force on (ignores APP_ENV)
+HELPDESK_LOGGER_ENABLED=false       # force off everywhere
+HELPDESK_LOGGER_ENVIRONMENTS="production,staging,preview"  # custom allowlist
+```
+
 ### Wire the exception handler
 
 **Laravel 11+** (`bootstrap/app.php`):
@@ -80,7 +88,8 @@ Key knobs (see `config/helpdesk-logger.php` for the full list):
 
 | Key | Default | Purpose |
 |---|---|---|
-| `enabled` | `true` | Master kill-switch. |
+| `enabled` | _(unset)_ | Explicit on/off. Wins over the allowlist. |
+| `environments` | `['production','staging']` | When `enabled` is unset, only report for these `APP_ENV` values. |
 | `burst_window_seconds` | `60` | Coalesce same-fingerprint events in this window. |
 | `sample_rate` | `1.0` | Drop-rate for noisy apps (1.0 = report every unique error). |
 | `ignore_exceptions` | `[404, 401, CSRF, validation, auth]` | Exceptions silently dropped. |

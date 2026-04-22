@@ -35,9 +35,29 @@ class HelpdeskLogger
     public function isEnabled(): bool
     {
         $cfg = config('helpdesk-logger');
-        if (! ($cfg['enabled'] ?? false)) return false;
+
+        // Endpoint + token are hard preconditions — without them we
+        // literally can't report anywhere, regardless of the toggles.
         if (empty($cfg['endpoint']) || empty($cfg['token'])) return false;
-        return true;
+
+        $explicit = $cfg['enabled'] ?? null;
+        if ($explicit !== null && $explicit !== '') {
+            // HELPDESK_LOGGER_ENABLED was set explicitly — respect it.
+            return (bool) $explicit;
+        }
+
+        // Env var unset — fall back to the environments allowlist so
+        // local dev is silent by default while prod/staging report.
+        $allowed = (array) ($cfg['environments'] ?? []);
+        if (empty($allowed)) {
+            // No allowlist configured either — assume "everywhere on"
+            // (mirrors pre-v1.2.0 behaviour for users who blanked the
+            // allowlist deliberately).
+            return true;
+        }
+
+        $current = (string) config('app.env', 'production');
+        return in_array($current, $allowed, true);
     }
 
     public function report(Throwable $e): void
