@@ -4,7 +4,7 @@
     "keywords": ["laravel", "error-reporting", "ticketmate", "exception-handler", "helpdesk", "d3vnz"],
     "license": "MIT",
     "type": "library",
-    "version": "1.3.0",
+    "version": "1.4.0",
     "authors": [
         {
             "name": "Joel Ireland",

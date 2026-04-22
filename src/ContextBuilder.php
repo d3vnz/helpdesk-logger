@@ -75,7 +75,23 @@ class ContextBuilder
         ], fn ($v) => $v !== null && $v !== '');
     }
 
-    /** @return array<string,mixed> */
+    /**
+     * Snapshot of the currently-authenticated user. Fields returned:
+     *   user_id_ref     - the primary key (via getAuthIdentifier)
+     *   user_email      - $user->email if present
+     *   user_first_name - $user->first_name if present (for apps that
+     *                     split the name column like TicketMate does)
+     *   user_last_name  - $user->last_name if present
+     *   user_name       - the best-available combined name:
+     *                       first_name + ' ' + last_name (preferred)
+     *                     → $user->full_name
+     *                     → $user->name
+     *
+     * Deliberately property-name-allow-list driven, not serialization of
+     * the whole model — never leaks credentials, remember_token, etc.
+     *
+     * @return array<string,mixed>
+     */
     protected function userContext(): array
     {
         $user = null;
@@ -88,12 +104,25 @@ class ContextBuilder
         }
 
         $email = $this->safeGet($user, 'email');
-        $name = $this->safeGet($user, 'name') ?? $this->safeGet($user, 'full_name');
+        $firstName = $this->safeGet($user, 'first_name');
+        $lastName = $this->safeGet($user, 'last_name');
+        $combined = $this->safeGet($user, 'full_name')
+            ?? $this->safeGet($user, 'name');
+
+        // Prefer first+last when available — that's the canonical
+        // shape on TicketMate's own User + Contact models, and most
+        // apps with a split name column. Falls back to the single-
+        // column "name" or "full_name" for apps that don't split.
+        if ($firstName || $lastName) {
+            $combined = trim(($firstName ?? '') . ' ' . ($lastName ?? '')) ?: $combined;
+        }
 
         return array_filter([
             'user_id_ref' => $id !== null ? (string) $id : null,
             'user_email' => $email,
-            'user_name' => $name,
+            'user_first_name' => $firstName,
+            'user_last_name' => $lastName,
+            'user_name' => $combined,
         ]);
     }
 
